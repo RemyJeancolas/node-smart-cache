@@ -1,0 +1,64 @@
+{
+  "name": "node-smart-cache",
+  "version": "1.0.0",
+  "description": "Cache module that handles asynchronous data and concurrency",
+  "main": "index.js",
+  "scripts": {
+    "lint": "tslint -c tslint.json ./lib/*.ts ./tests/*.ts --format verbose",
+    "build": "rm -rf js && tsc",
+    "test": "mocha tests --compilers ts:ts-node/register --bail",
+    "cover": "nyc --report-dir tests/coverage npm run test",
+    "coveralls": "cat tests/coverage/lcov.info | ./node_modules/.bin/coveralls"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RemyJeancolas/node-smart-cache.git"
+  },
+  "keywords": [
+    "cache",
+    "promise",
+    "asynchronous",
+    "smart"
+  ],
+  "author": "Rémy Jeancolas",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/RemyJeancolas/node-smart-cache/issues"
+  },
+  "homepage": "https://github.com/RemyJeancolas/node-smart-cache#readme",
+  "devDependencies": {
+    "@types/chai": "^3.4.34",
+    "@types/mocha": "^2.2.38",
+    "@types/node": "^7.0.4",
+    "@types/sinon": "^1.16.34",
+    "chai": "^3.5.0",
+    "coveralls": "^2.11.15",
+    "mocha": "^3.2.0",
+    "nyc": "^10.1.2",
+    "sinon": "^1.17.7",
+    "ts-node": "^2.0.0",
+    "tslint": "^4.4.2",
+    "tslint-microsoft-contrib": "^4.0.0",
+    "typescript": "^2.1.5"
+  },
+  "nyc": {
+    "include": [
+      "lib/*.ts"
+    ],
+    "exclude": [
+      "index.d.ts"
+    ],
+    "extension": [
+      ".ts"
+    ],
+    "require": [
+      "ts-node/register"
+    ],
+    "reporter": [
+      "html",
+      "text-summary",
+      "lcov"
+    ],
+    "all": true
+  }
+}
