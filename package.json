@@ -1,6 +1,6 @@
 {
   "name": "node-smart-cache",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Cache module that handles asynchronous data and concurrency",
   "main": "index.js",
   "scripts": {
