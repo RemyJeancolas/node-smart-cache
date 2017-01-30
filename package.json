@@ -2,7 +2,7 @@
   "name": "node-smart-cache",
   "version": "1.0.1",
   "description": "Cache module that handles asynchronous data and concurrency",
-  "main": "index.js",
+  "main": "js/index.js",
   "scripts": {
     "lint": "tslint -c tslint.json ./lib/*.ts ./tests/*.ts --format verbose",
     "build": "rm -rf js && tsc",
@@ -47,7 +47,8 @@
       "lib/*.ts"
     ],
     "exclude": [
-      "index.d.ts"
+      "index.d.ts",
+      "lib/index.ts"
     ],
     "extension": [
       ".ts"
