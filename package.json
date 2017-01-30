@@ -41,6 +41,7 @@
     "tslint-microsoft-contrib": "^4.0.0",
     "typescript": "^2.1.5"
   },
+  "typings": "index.d.ts",
   "nyc": {
     "include": [
       "lib/*.ts"
