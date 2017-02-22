@@ -36,8 +36,13 @@ class SmartCache {
             const originalMethod = descriptor.value;
             const smartCache = SmartCache.getInstance();
             // Check key generation method
-            if (!target.hasOwnProperty(params.keyHandler) || typeof (target[params.keyHandler]) !== 'function') {
-                throw new Error(`Function ${params.keyHandler} doesn't exist on class ${target.constructor.name}`);
+            if (typeof (params.keyHandler) === 'string') {
+                if (!target.hasOwnProperty(params.keyHandler) || typeof (target[params.keyHandler]) !== 'function') {
+                    throw new Error(`Function ${params.keyHandler} doesn't exist on class ${target.constructor.name}`);
+                }
+            }
+            else if (typeof (params.keyHandler) !== 'function') {
+                throw new Error('keyHandler param type must be string or function');
             }
             // Create global 'generating' var for current class
             if (!target.hasOwnProperty(generatingProcesses)) {
@@ -47,7 +52,8 @@ class SmartCache {
             target[generatingProcesses][propertyKey] = {};
             descriptor.value = function (...args) {
                 return __awaiter(this, void 0, void 0, function* () {
-                    const cacheKey = target[params.keyHandler](...args);
+                    const keyHandler = typeof (params.keyHandler) === 'string' ? target[params.keyHandler] : params.keyHandler;
+                    const cacheKey = keyHandler(...args);
                     if (typeof cacheKey !== 'string' || cacheKey.trim() === '') {
                         throw new Error('Invalid cache key received from keyComputation function');
                     }

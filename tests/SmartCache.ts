@@ -27,7 +27,7 @@ class Foo {
         });
     }
 
-    @cache({keyHandler: 'generateKey2'})
+    @cache({keyHandler: (input: string) => input})
     public error(input: string, wait: number): Promise<string> {
         return new Promise<string>((resolve, reject) => {
             setTimeout(() => {
@@ -64,6 +64,18 @@ try {
     }
 } catch (e) {
     invalidHandlerError = e.message;
+}
+
+let invalidHandlerError2: string = null;
+try {
+    class Fail2 {
+        @cache({keyHandler: <any> 2})
+        public foo(): Promise<string> {
+            return Promise.resolve('bar');
+        }
+    }
+} catch (e) {
+    invalidHandlerError2 = e.message;
 }
 
 describe('SmartCache', () => {
@@ -169,6 +181,7 @@ describe('SmartCache', () => {
 
     it('SmartCache::cache() - Invalid key handler response', async () => {
         expect(invalidHandlerError).to.equal('Function null doesn\'t exist on class Fail', 'Error should be as expected');
+        expect(invalidHandlerError2).to.equal('keyHandler param type must be string or function');
 
         let error: string = null;
         try {

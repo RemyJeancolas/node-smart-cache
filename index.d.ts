@@ -1,6 +1,6 @@
 export interface SmartCacheParams {
     ttl?: number;
-    keyHandler: string;
+    keyHandler: string|((...args: any[]) => string);
 }
 
 export interface SmartCacheEngine {

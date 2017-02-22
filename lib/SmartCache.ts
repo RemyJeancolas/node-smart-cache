@@ -3,7 +3,7 @@ import {MemoryCache} from './MemoryCache';
 
 export interface SmartCacheParams {
     ttl?: number;
-    keyHandler: string;
+    keyHandler: string|((...args: any[]) => string);
 }
 
 export interface SmartCacheEngine {
@@ -52,8 +52,12 @@ export class SmartCache {
             const smartCache = SmartCache.getInstance();
 
             // Check key generation method
-            if (!target.hasOwnProperty(params.keyHandler) || typeof(target[params.keyHandler]) !== 'function') {
-                throw new Error(`Function ${params.keyHandler} doesn't exist on class ${target.constructor.name}`);
+            if (typeof(params.keyHandler) === 'string') {
+                if (!target.hasOwnProperty(params.keyHandler) || typeof(target[params.keyHandler]) !== 'function') {
+                    throw new Error(`Function ${params.keyHandler} doesn't exist on class ${target.constructor.name}`);
+                }
+            } else if (typeof(params.keyHandler) !== 'function') {
+                throw new Error('keyHandler param type must be string or function');
             }
 
             // Create global 'generating' var for current class
@@ -65,7 +69,8 @@ export class SmartCache {
             target[generatingProcesses][propertyKey] = <GeneratingProcess> {};
 
             descriptor.value = async function (...args: any[]): Promise<any> {
-                const cacheKey: string = target[params.keyHandler](...args);
+                const keyHandler = typeof(params.keyHandler) === 'string' ? target[params.keyHandler] : params.keyHandler;
+                const cacheKey: string = keyHandler(...args);
                 if (typeof cacheKey !== 'string' || cacheKey.trim() === '') {
                     throw new Error('Invalid cache key received from keyComputation function');
                 }
