@@ -2,13 +2,13 @@ import {EventEmitter} from 'events';
 import {MemoryCache} from './MemoryCache';
 
 export interface SmartCacheParams {
-    ttl?: number;
+    ttl?: number|false;
     keyHandler: string|((...args: any[]) => string);
 }
 
 export interface SmartCacheEngine {
     get: (key: string) => Promise<any>; // tslint:disable-line:no-reserved-keywords
-    set: (key: string, value: any, ttl: number) => Promise<void>; // tslint:disable-line:no-reserved-keywords
+    set: (key: string, value: any, ttl?: number) => Promise<void>; // tslint:disable-line:no-reserved-keywords
 }
 
 const generatingProcesses: any = Symbol('generatingProcesses');
@@ -89,8 +89,12 @@ export class SmartCache {
                     // If value is not generating, generate it
                     try {
                         const generatedValue = await originalMethod.apply(this, args);
-                        const ttl = typeof params.ttl === 'number' ? params.ttl : smartCache.ttl;
-                        await smartCache.cacheEngine.set(fullCacheKey, generatedValue, ttl);
+                        if (params.ttl === false) {
+                            await smartCache.cacheEngine.set(fullCacheKey, generatedValue);
+                        } else {
+                            const ttl = typeof params.ttl === 'number' ? params.ttl : smartCache.ttl;
+                            await smartCache.cacheEngine.set(fullCacheKey, generatedValue, ttl);
+                        }
                         smartCache.emitter.emit(fullCacheKey, null, generatedValue);
                         return generatedValue;
                     } catch (err) {

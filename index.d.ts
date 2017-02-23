@@ -1,11 +1,11 @@
 export interface SmartCacheParams {
-    ttl?: number;
+    ttl?: number|false;
     keyHandler: string|((...args: any[]) => string);
 }
 
 export interface SmartCacheEngine {
     get: (key: string) => Promise<any>;
-    set: (key: string, value: any, ttl: number) => Promise<void>;
+    set: (key: string, value: any, ttl?: number) => Promise<void>;
 }
 
 export class SmartCache {
@@ -16,5 +16,6 @@ export class SmartCache {
 
 export class MemoryCache {
     public get(key: string): Promise<any>;
-    public set(key: string, value: any, ttl: number): Promise<void>;
+    public set(key: string, value: any, ttl?: number): Promise<void>;
+    public del(key: string): Promise<void>;
 }

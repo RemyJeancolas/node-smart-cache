@@ -69,8 +69,13 @@ class SmartCache {
                         // If value is not generating, generate it
                         try {
                             const generatedValue = yield originalMethod.apply(this, args);
-                            const ttl = typeof params.ttl === 'number' ? params.ttl : smartCache.ttl;
-                            yield smartCache.cacheEngine.set(fullCacheKey, generatedValue, ttl);
+                            if (params.ttl === false) {
+                                yield smartCache.cacheEngine.set(fullCacheKey, generatedValue);
+                            }
+                            else {
+                                const ttl = typeof params.ttl === 'number' ? params.ttl : smartCache.ttl;
+                                yield smartCache.cacheEngine.set(fullCacheKey, generatedValue, ttl);
+                            }
                             smartCache.emitter.emit(fullCacheKey, null, generatedValue);
                             return generatedValue;
                         }

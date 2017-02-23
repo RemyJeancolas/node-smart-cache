@@ -27,6 +27,13 @@ class Foo {
         });
     }
 
+    @cache({ keyHandler: (input: string) => input, ttl: false})
+    public neverExpire(input: string): Promise<string> {
+        return new Promise<string>(resolve => {
+            resolve(input);
+        });
+    }
+
     @cache({keyHandler: (input: string) => input})
     public error(input: string, wait: number): Promise<string> {
         return new Promise<string>((resolve, reject) => {
@@ -139,6 +146,21 @@ describe('SmartCache', () => {
         expect(await foo.bar()).to.equal('bar');
         expect(getSpy.callCount).to.equal(3);
         expect(setSpy.callCount).to.equal(2);
+
+        // Test cache with no TTL
+        expect(await foo.neverExpire('hello')).to.equal('hello');
+        expect(getSpy.callCount).to.equal(4);
+        expect(setSpy.callCount).to.equal(3);
+        clock.tick(3600000);
+        expect(await foo.neverExpire('hello')).to.equal('hello');
+        expect(getSpy.callCount).to.equal(5);
+        expect(setSpy.callCount).to.equal(3);
+
+        // Test cache clean
+        await (<any> SmartCache).instance.cacheEngine.del('Foo:neverExpire:hello');
+        expect(await foo.neverExpire('hello')).to.equal('hello');
+        expect(getSpy.callCount).to.equal(6);
+        expect(setSpy.callCount).to.equal(4);
     });
 
     it('SmartCache::cache() - Handle concurrency', async () => {
