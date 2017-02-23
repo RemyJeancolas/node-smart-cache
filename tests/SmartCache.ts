@@ -27,7 +27,7 @@ class Foo {
         });
     }
 
-    @cache({ keyHandler: (input: string) => input, ttl: false})
+    @cache({ keyHandler: (input: string) => input, ttl: false, keyPrefix: 'prefix'})
     public neverExpire(input: string): Promise<string> {
         return new Promise<string>(resolve => {
             resolve(input);
@@ -157,7 +157,7 @@ describe('SmartCache', () => {
         expect(setSpy.callCount).to.equal(3);
 
         // Test cache clean
-        await (<any> SmartCache).instance.cacheEngine.del('Foo:neverExpire:hello');
+        await (<any> SmartCache).instance.cacheEngine.del('prefix:hello');
         expect(await foo.neverExpire('hello')).to.equal('hello');
         expect(getSpy.callCount).to.equal(6);
         expect(setSpy.callCount).to.equal(4);
@@ -211,6 +211,6 @@ describe('SmartCache', () => {
         } catch (e) {
             error = e.message;
         }
-        expect(error).to.equal('Invalid cache key received from keyComputation function');
+        expect(error).to.equal('Invalid cache key received from keyHandler function');
     });
 });

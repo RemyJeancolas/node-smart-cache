@@ -55,10 +55,13 @@ class SmartCache {
                     const keyHandler = typeof (params.keyHandler) === 'string' ? target[params.keyHandler] : params.keyHandler;
                     const cacheKey = keyHandler(...args);
                     if (typeof cacheKey !== 'string' || cacheKey.trim() === '') {
-                        throw new Error('Invalid cache key received from keyComputation function');
+                        throw new Error('Invalid cache key received from keyHandler function');
                     }
                     // If we reach this part, key is valid
-                    const fullCacheKey = `${target.constructor.name}:${propertyKey}:${cacheKey}`;
+                    // Compute key prefix
+                    const keyPrefix = (typeof (params.keyPrefix) === 'string' && params.keyPrefix.trim() !== '')
+                        ? params.keyPrefix : `${target.constructor.name}:${propertyKey}`;
+                    const fullCacheKey = `${keyPrefix}:${cacheKey}`;
                     const cachedValue = yield smartCache.cacheEngine.get(fullCacheKey);
                     if (cachedValue) {
                         return cachedValue;
