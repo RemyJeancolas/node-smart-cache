@@ -34,6 +34,20 @@ class Foo {
         });
     }
 
+    @cache({ keyHandler: () => 'nullValues', ttl: false, keyPrefix: 'nullValues'})
+    public nullValues(input: string): Promise<string> {
+        return new Promise<string>(resolve => {
+            resolve(input);
+        });
+    }
+
+    @cache({ keyHandler: () => 'nvas', ttl: false, keyPrefix: 'nvas', saveEmptyValues: true})
+    public nullValuesAlwaysSave(input: string): Promise<string> {
+        return new Promise<string>(resolve => {
+            resolve(input);
+        });
+    }
+
     @cache({keyHandler: (input: string) => input})
     public error(input: string, wait: number): Promise<string> {
         return new Promise<string>((resolve, reject) => {
@@ -95,6 +109,10 @@ describe('SmartCache', () => {
         sandbox.restore();
     });
 
+    it('SmartCache::getCacheEngine()', () => {
+        expect(SmartCache.getCacheEngine()).to.be.instanceof(MemoryCache);
+    });
+
     it('SmartCache::setCacheEngine()', async () => {
         try {
             const getStub = sandbox.stub(cacheEngine, 'get', () => <any> null);
@@ -108,17 +126,31 @@ describe('SmartCache', () => {
         }
     });
 
+    it('SmartCache::setSaveEmptyValues', async () => {
+        try {
+            const setStub = sandbox.stub(SmartCache.getCacheEngine(), 'set', () => true);
+            await foo.nullValues(null);
+            expect(setStub.callCount).to.equal(0);
+
+            SmartCache.setSaveEmptyValues(true);
+            await foo.nullValues(null);
+            expect(setStub.callCount).to.equal(1);
+        } finally {
+            SmartCache.setSaveEmptyValues(false);
+        }
+    });
+
     it('SmartCache::setTtl()', async () => {
         try {
             const spy = sandbox.spy(MemoryCache.prototype, 'set');
             await foo.baz('abc', 1);
             expect(spy.callCount).to.equal(1);
-            expect(spy.lastCall.args).to.deep.equal(['Foo:baz:abc', 'abc', 60]);
+            expect(spy.lastCall.args).to.deep.equal(['Foo:baz:abc', { v: 'abc' }, 60]);
 
             SmartCache.setTtl(2);
             await foo.baz('cba', 1);
             expect(spy.callCount).to.equal(2);
-            expect(spy.lastCall.args).to.deep.equal(['Foo:baz:cba', 'cba', 2]);
+            expect(spy.lastCall.args).to.deep.equal(['Foo:baz:cba', { v: 'cba' }, 2]);
         } finally {
             SmartCache.setTtl(60);
         }
@@ -134,7 +166,7 @@ describe('SmartCache', () => {
         expect(getSpy.callCount).to.equal(1);
         expect(getSpy.lastCall.args).to.deep.equal(['Foo:bar:key']);
         expect(setSpy.callCount).to.equal(1);
-        expect(setSpy.lastCall.args).to.deep.equal(['Foo:bar:key', 'bar', 5]);
+        expect(setSpy.lastCall.args).to.deep.equal(['Foo:bar:key', { v: 'bar' }, 5]);
 
         // Test cache get
         expect(await foo.bar()).to.equal('bar');
@@ -157,10 +189,18 @@ describe('SmartCache', () => {
         expect(setSpy.callCount).to.equal(3);
 
         // Test cache clean
-        await (<any> SmartCache).instance.cacheEngine.del('prefix:hello');
+        await (<MemoryCache> SmartCache.getCacheEngine()).del('prefix:hello');
         expect(await foo.neverExpire('hello')).to.equal('hello');
         expect(getSpy.callCount).to.equal(6);
         expect(setSpy.callCount).to.equal(4);
+
+        // Test null values save with 'saveEmptyValues' param to true
+        SmartCache.setSaveEmptyValues(false);
+        (expect(await foo.nullValuesAlwaysSave(null))).to.equal(null, 'Result should be null');
+        expect(getSpy.callCount).to.equal(7);
+        expect(setSpy.callCount).to.equal(5);
+        expect(setSpy.lastCall.args).to.deep.equal(['nvas:nvas', { v: null}, undefined], 'Result should be as expected');
+        await (<MemoryCache> SmartCache.getCacheEngine()).del('nvas:nvas');
     });
 
     it('SmartCache::cache() - Handle concurrency', async () => {

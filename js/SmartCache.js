@@ -7,29 +7,36 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+Object.defineProperty(exports, "__esModule", { value: true });
 const events_1 = require("events");
 const MemoryCache_1 = require("./MemoryCache");
 const generatingProcesses = Symbol('generatingProcesses');
 class SmartCache {
-    constructor(cacheEngine, ttl) {
+    constructor(cacheEngine) {
         this.cacheEngine = null;
-        this.ttl = null;
+        this.ttl = 60;
+        this.saveEmptyValues = false;
         this.emitter = null;
         this.cacheEngine = cacheEngine;
-        this.ttl = ttl;
         this.emitter = new events_1.EventEmitter();
     }
     static getInstance() {
         if (!SmartCache.instance) {
-            SmartCache.instance = new SmartCache(new MemoryCache_1.MemoryCache(), SmartCache.defaultTtl);
+            SmartCache.instance = new SmartCache(new MemoryCache_1.MemoryCache());
         }
         return SmartCache.instance;
+    }
+    static getCacheEngine() {
+        return SmartCache.getInstance().cacheEngine;
     }
     static setCacheEngine(cacheEngine) {
         SmartCache.getInstance().cacheEngine = cacheEngine;
     }
     static setTtl(ttl) {
         SmartCache.getInstance().ttl = ttl;
+    }
+    static setSaveEmptyValues(saveEmptyValues) {
+        SmartCache.getInstance().saveEmptyValues = saveEmptyValues;
     }
     static cache(params) {
         return (target, propertyKey, descriptor) => {
@@ -63,8 +70,8 @@ class SmartCache {
                         ? params.keyPrefix : `${target.constructor.name}:${propertyKey}`;
                     const fullCacheKey = `${keyPrefix}:${cacheKey}`;
                     const cachedValue = yield smartCache.cacheEngine.get(fullCacheKey);
-                    if (cachedValue) {
-                        return cachedValue;
+                    if (cachedValue && cachedValue.hasOwnProperty('v')) {
+                        return cachedValue.v;
                     }
                     // If we reach this part, value doesn't exist in cache
                     if (target[generatingProcesses][propertyKey][cacheKey] !== true) {
@@ -72,13 +79,14 @@ class SmartCache {
                         // If value is not generating, generate it
                         try {
                             const generatedValue = yield originalMethod.apply(this, args);
-                            if (params.ttl === false) {
-                                yield smartCache.cacheEngine.set(fullCacheKey, generatedValue);
+                            // Check if we need to save the generated value in cache
+                            const saveEmptyValues = typeof (params.saveEmptyValues) === 'boolean' ? params.saveEmptyValues : smartCache.saveEmptyValues;
+                            if (generatedValue != null || saveEmptyValues) {
+                                const ttl = (typeof params.ttl === 'number')
+                                    ? params.ttl : (params.ttl === false ? undefined : smartCache.ttl);
+                                yield smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
                             }
-                            else {
-                                const ttl = typeof params.ttl === 'number' ? params.ttl : smartCache.ttl;
-                                yield smartCache.cacheEngine.set(fullCacheKey, generatedValue, ttl);
-                            }
+                            // Send value to all listeners
                             smartCache.emitter.emit(fullCacheKey, null, generatedValue);
                             return generatedValue;
                         }
@@ -107,7 +115,6 @@ class SmartCache {
         };
     }
 }
-SmartCache.defaultTtl = 60;
 SmartCache.instance = null;
 exports.SmartCache = SmartCache;
 //# sourceMappingURL=SmartCache.js.map

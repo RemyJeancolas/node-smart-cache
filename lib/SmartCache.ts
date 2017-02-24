@@ -5,6 +5,7 @@ export interface SmartCacheParams {
     keyHandler: string|((...args: any[]) => string);
     ttl?: number|false;
     keyPrefix?: string;
+    saveEmptyValues?: boolean;
 }
 
 export interface SmartCacheEngine {
@@ -20,23 +21,26 @@ interface GeneratingProcess {
 
 export class SmartCache {
     private cacheEngine: SmartCacheEngine = null;
-    private ttl: number = null;
+    private ttl: number = 60;
+    private saveEmptyValues: boolean = false;
     private emitter: EventEmitter = null;
 
-    private static defaultTtl: number = 60;
     private static instance: SmartCache = null;
 
-    private constructor(cacheEngine: SmartCacheEngine, ttl: number) {
+    private constructor(cacheEngine: SmartCacheEngine) {
         this.cacheEngine = cacheEngine;
-        this.ttl = ttl;
         this.emitter = new EventEmitter();
     }
 
     private static getInstance(): SmartCache {
         if (!SmartCache.instance) {
-            SmartCache.instance = new SmartCache(new MemoryCache(), SmartCache.defaultTtl);
+            SmartCache.instance = new SmartCache(new MemoryCache());
         }
         return SmartCache.instance;
+    }
+
+    public static getCacheEngine(): SmartCacheEngine {
+        return SmartCache.getInstance().cacheEngine;
     }
 
     public static setCacheEngine(cacheEngine: SmartCacheEngine): void {
@@ -45,6 +49,10 @@ export class SmartCache {
 
     public static setTtl(ttl: number): void {
         SmartCache.getInstance().ttl = ttl;
+    }
+
+    public static setSaveEmptyValues(saveEmptyValues: boolean): void {
+        SmartCache.getInstance().saveEmptyValues = saveEmptyValues;
     }
 
     public static cache(params: SmartCacheParams): any {
@@ -84,8 +92,8 @@ export class SmartCache {
 
                 const fullCacheKey = `${keyPrefix}:${cacheKey}`;
                 const cachedValue = await smartCache.cacheEngine.get(fullCacheKey);
-                if (cachedValue) { // If value exists in cache, just return it
-                    return cachedValue;
+                if (cachedValue && cachedValue.hasOwnProperty('v')) { // If value exists in cache, just return it
+                    return cachedValue.v;
                 }
 
                 // If we reach this part, value doesn't exist in cache
@@ -95,13 +103,21 @@ export class SmartCache {
                     // If value is not generating, generate it
                     try {
                         const generatedValue = await originalMethod.apply(this, args);
-                        if (params.ttl === false) {
-                            await smartCache.cacheEngine.set(fullCacheKey, generatedValue);
-                        } else {
-                            const ttl = typeof params.ttl === 'number' ? params.ttl : smartCache.ttl;
-                            await smartCache.cacheEngine.set(fullCacheKey, generatedValue, ttl);
+
+                        // Check if we need to save the generated value in cache
+                        const saveEmptyValues =
+                            typeof(params.saveEmptyValues) === 'boolean' ? params.saveEmptyValues : smartCache.saveEmptyValues;
+
+                        if (generatedValue != null || saveEmptyValues) {
+                            const ttl = (typeof params.ttl === 'number')
+                                ? params.ttl : (params.ttl === false ? undefined : smartCache.ttl);
+
+                            await smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
                         }
+
+                        // Send value to all listeners
                         smartCache.emitter.emit(fullCacheKey, null, generatedValue);
+
                         return generatedValue;
                     } catch (err) {
                         smartCache.emitter.emit(fullCacheKey, err);

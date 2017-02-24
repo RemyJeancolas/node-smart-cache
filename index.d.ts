@@ -2,6 +2,7 @@ export interface SmartCacheParams {
     keyHandler: string|((...args: any[]) => string);
     ttl?: number|false;
     keyPrefix?: string;
+    saveEmptyValues?: boolean;
 }
 
 export interface SmartCacheEngine {
@@ -10,8 +11,10 @@ export interface SmartCacheEngine {
 }
 
 export class SmartCache {
+    public static getCacheEngine(): SmartCacheEngine;
     public static setCacheEngine(cacheEngine: SmartCacheEngine): void;
     public static setTtl(ttl: number): void;
+    public static setSaveEmptyValues(saveEmptyValues: boolean): void
     public static cache(params: SmartCacheParams): any;
 }
 
