@@ -1,11 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 class MemoryCache {
-    constructor() {
+    constructor(gcInterval = 60) {
         this.data = {};
         setInterval(() => {
             this.gc();
-        }, 60000); // Clean memory data every 60 seconds
+        }, gcInterval * 1000); // Clean memory data every <gcInterval> seconds
     }
     get(key) {
         if (!this.data.hasOwnProperty(key) || (this.data[key].expire && this.data[key].expire < Date.now())) {

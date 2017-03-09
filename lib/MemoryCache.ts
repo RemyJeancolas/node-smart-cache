@@ -1,10 +1,10 @@
 export class MemoryCache {
     private data: any = {};
 
-    public constructor() {
+    public constructor(gcInterval: number = 60) {
         setInterval(() => {
             this.gc();
-        }, 60000); // Clean memory data every 60 seconds
+        }, gcInterval * 1000); // Clean memory data every <gcInterval> seconds
     }
 
     public get(key: string): Promise<any> { // tslint:disable-line:no-reserved-keywords

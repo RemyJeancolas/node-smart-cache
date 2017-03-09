@@ -1,6 +1,6 @@
 export interface SmartCacheParams {
     keyHandler: string|((...args: any[]) => string);
-    ttl?: number|false;
+    ttl?: number|false|((...args: any[]) => number|false);
     keyPrefix?: string;
     saveEmptyValues?: boolean;
 }
@@ -19,6 +19,7 @@ export class SmartCache {
 }
 
 export class MemoryCache {
+    constructor(gcInterval?: number);
     public get(key: string): Promise<any>;
     public set(key: string, value: any, ttl?: number): Promise<void>;
     public del(key: string): Promise<void>;

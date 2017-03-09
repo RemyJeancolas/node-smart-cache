@@ -48,6 +48,18 @@ class Foo {
         });
     }
 
+    @cache({keyHandler: () => 'dynTtl', keyPrefix: 'dynTtl', ttl: (i: any, t: any, r: any) => {
+        return typeof r.ttl === 'number' ? r.ttl + 1 : r.ttl;
+    }})
+    public dynamicTtl(input: string, ttl: number): Promise<any> {
+        return new Promise<any>(resolve => {
+            resolve({
+                input,
+                ttl: ttl > 0 ? ttl + 1 : (ttl === 0 ? false : 'foo')
+            });
+        });
+    }
+
     @cache({keyHandler: (input: string) => input})
     public error(input: string, wait: number): Promise<string> {
         return new Promise<string>((resolve, reject) => {
@@ -201,6 +213,35 @@ describe('SmartCache', () => {
         expect(setSpy.callCount).to.equal(5);
         expect(setSpy.lastCall.args).to.deep.equal(['nvas:nvas', { v: null}, undefined], 'Result should be as expected');
         await (<MemoryCache> SmartCache.getCacheEngine()).del('nvas:nvas');
+
+        // Test dynamic TTL
+        await foo.dynamicTtl('input', 1);
+        expect(getSpy.callCount).to.equal(8);
+        expect(setSpy.callCount).to.equal(6);
+        expect(setSpy.lastCall.args).to.deep.equal(
+            ['dynTtl:dynTtl', { v: {input: 'input', ttl: 2} }, 3],
+            'Result should be as expected'
+        );
+
+        await (<MemoryCache> SmartCache.getCacheEngine()).del('dynTtl:dynTtl');
+        await foo.dynamicTtl('input', 0);
+        expect(getSpy.callCount).to.equal(9);
+        expect(setSpy.callCount).to.equal(7);
+        expect(setSpy.lastCall.args).to.deep.equal(
+            ['dynTtl:dynTtl', { v: {input: 'input', ttl: false} }, undefined],
+            'Result should be as expected'
+        );
+
+        await (<MemoryCache> SmartCache.getCacheEngine()).del('dynTtl:dynTtl');
+        let error: string = null;
+        try {
+            await foo.dynamicTtl('input', -1);
+        } catch (e) {
+            error = e.message;
+        }
+        expect(getSpy.callCount).to.equal(10);
+        expect(setSpy.callCount).to.equal(7);
+        expect(error).to.equal('Invalid ttl received from ttl function');
     });
 
     it('SmartCache::cache() - Handle concurrency', async () => {

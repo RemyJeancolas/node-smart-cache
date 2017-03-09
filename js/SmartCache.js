@@ -82,8 +82,22 @@ class SmartCache {
                             // Check if we need to save the generated value in cache
                             const saveEmptyValues = typeof (params.saveEmptyValues) === 'boolean' ? params.saveEmptyValues : smartCache.saveEmptyValues;
                             if (generatedValue != null || saveEmptyValues) {
-                                const ttl = (typeof params.ttl === 'number')
-                                    ? params.ttl : (params.ttl === false ? undefined : smartCache.ttl);
+                                // Compute cache TTL
+                                let ttl = smartCache.ttl;
+                                if (typeof params.ttl === 'number') {
+                                    ttl = params.ttl;
+                                }
+                                else if (params.ttl === false) {
+                                    ttl = undefined;
+                                }
+                                else if (typeof params.ttl === 'function') {
+                                    args.push(generatedValue);
+                                    const dynamicTtl = params.ttl(...args);
+                                    if (typeof dynamicTtl !== 'number' && dynamicTtl !== false) {
+                                        throw new Error('Invalid ttl received from ttl function');
+                                    }
+                                    ttl = dynamicTtl === false ? undefined : dynamicTtl;
+                                }
                                 yield smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
                             }
                             // Send value to all listeners
