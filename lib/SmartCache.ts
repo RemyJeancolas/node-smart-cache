@@ -1,5 +1,6 @@
 import {EventEmitter} from 'events';
 import {MemoryCache} from './MemoryCache';
+import {Ipc} from './ipc/Ipc';
 
 export interface SmartCacheParams {
     keyHandler: string|((...args: any[]) => string);
@@ -24,6 +25,7 @@ export class SmartCache {
     private ttl: number = 60;
     private saveEmptyValues: boolean = false;
     private emitter: EventEmitter = null;
+    private ipc: Ipc = null;
 
     private static instance: SmartCache = null;
 
@@ -55,7 +57,17 @@ export class SmartCache {
         SmartCache.getInstance().saveEmptyValues = saveEmptyValues;
     }
 
+    public static setIpc(ipc: Ipc): void {
+        const smartcache = SmartCache.getInstance();
+        ipc.onEvent((key, value) => {
+            smartcache.emitter.emit(key, null, value);
+        });
+        smartcache.ipc = ipc;
+    }
+
+    // tslint:disable-next-line:max-func-body-length
     public static cache(params: SmartCacheParams): any {
+        // tslint:disable-next-line:max-func-body-length
         return (target: any, propertyKey: string, descriptor: TypedPropertyDescriptor<any>): any => {
             const originalMethod = descriptor.value;
             const smartCache = SmartCache.getInstance();
@@ -97,7 +109,12 @@ export class SmartCache {
                 }
 
                 // If we reach this part, value doesn't exist in cache
-                if (target[generatingProcesses][propertyKey][cacheKey] !== true) {
+                let externalGenerating: boolean = false;
+                if (smartCache.ipc) {
+                    externalGenerating = !await smartCache.ipc.lock(fullCacheKey);
+                }
+
+                if (!externalGenerating && target[generatingProcesses][propertyKey][cacheKey] !== true) {
                     target[generatingProcesses][propertyKey][cacheKey] = true;
 
                     // If value is not generating, generate it
@@ -127,8 +144,13 @@ export class SmartCache {
                             await smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
                         }
 
-                        // Send value to all listeners
+                        // Send value to all local listeners
                         smartCache.emitter.emit(fullCacheKey, null, generatedValue);
+
+                        // Send value to all remote listeners
+                        if (smartCache.ipc) {
+                            smartCache.ipc.emit(fullCacheKey, generatedValue);
+                        }
 
                         return generatedValue;
                     } catch (err) {
@@ -136,6 +158,10 @@ export class SmartCache {
                         throw err;
                     } finally {
                         target[generatingProcesses][propertyKey][cacheKey] = false;
+
+                        if (smartCache.ipc) {
+                            smartCache.ipc.unlock(fullCacheKey);
+                        }
                     }
                 } else { // Else wait for value generation
                     return new Promise<any>((resolve) => {

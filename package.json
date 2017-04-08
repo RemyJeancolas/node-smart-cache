@@ -30,6 +30,7 @@
     "@types/chai": "^3.4.34",
     "@types/mocha": "^2.2.38",
     "@types/node": "^7.0.4",
+    "@types/redis": "^0.12.36",
     "@types/sinon": "^1.16.34",
     "chai": "^3.5.0",
     "coveralls": "^2.11.15",
@@ -44,7 +45,7 @@
   "typings": "index.d.ts",
   "nyc": {
     "include": [
-      "lib/*.ts"
+      "lib/**/*.ts"
     ],
     "exclude": [
       "index.d.ts",
@@ -62,5 +63,8 @@
       "lcov"
     ],
     "all": true
+  },
+  "dependencies": {
+    "redis": "^2.7.1"
   }
 }
