@@ -17,6 +17,7 @@ class SmartCache {
         this.ttl = 60;
         this.saveEmptyValues = false;
         this.emitter = null;
+        this.waitForCacheSet = true;
         this.cacheEngine = cacheEngine;
         this.emitter = new events_1.EventEmitter();
     }
@@ -37,6 +38,9 @@ class SmartCache {
     }
     static setSaveEmptyValues(saveEmptyValues) {
         SmartCache.getInstance().saveEmptyValues = saveEmptyValues;
+    }
+    static setWaitForCacheSet(wait) {
+        SmartCache.getInstance().waitForCacheSet = wait;
     }
     static cache(params) {
         return (target, propertyKey, descriptor) => {
@@ -98,7 +102,12 @@ class SmartCache {
                                     }
                                     ttl = dynamicTtl === false ? undefined : dynamicTtl;
                                 }
-                                yield smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
+                                if (smartCache.waitForCacheSet) {
+                                    yield smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
+                                }
+                                else {
+                                    smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
+                                }
                             }
                             // Send value to all listeners
                             smartCache.emitter.emit(fullCacheKey, null, generatedValue);
