@@ -14,7 +14,8 @@ export class SmartCache {
     public static getCacheEngine(): SmartCacheEngine;
     public static setCacheEngine(cacheEngine: SmartCacheEngine): void;
     public static setTtl(ttl: number): void;
-    public static setSaveEmptyValues(saveEmptyValues: boolean): void
+    public static setSaveEmptyValues(saveEmptyValues: boolean): void;
+    public static setWaitForCacheSet(wait: boolean): void;
     public static cache(params: SmartCacheParams): any;
 }
 
