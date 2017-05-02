@@ -24,6 +24,7 @@ export class SmartCache {
     private ttl: number = 60;
     private saveEmptyValues: boolean = false;
     private emitter: EventEmitter = null;
+    private waitForCacheSet: boolean = true;
 
     private static instance: SmartCache = null;
 
@@ -53,6 +54,10 @@ export class SmartCache {
 
     public static setSaveEmptyValues(saveEmptyValues: boolean): void {
         SmartCache.getInstance().saveEmptyValues = saveEmptyValues;
+    }
+
+    public static setWaitForCacheSet(wait: boolean): void {
+        SmartCache.getInstance().waitForCacheSet = wait;
     }
 
     public static cache(params: SmartCacheParams): any {
@@ -124,7 +129,11 @@ export class SmartCache {
                                 ttl = dynamicTtl === false ? undefined : dynamicTtl;
                             }
 
-                            await smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
+                            if (smartCache.waitForCacheSet) {
+                                await smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
+                            } else {
+                                smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
+                            }
                         }
 
                         // Send value to all listeners
