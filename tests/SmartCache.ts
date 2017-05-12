@@ -121,6 +121,33 @@ describe('SmartCache', () => {
         sandbox.restore();
     });
 
+    it('SmartCache::enable()', async () => {
+        try {
+            const getStub = sandbox.stub(SmartCache.getCacheEngine(), 'get').returns(null);
+            const setStub = sandbox.stub(SmartCache.getCacheEngine(), 'set').returns(true);
+            await foo.bar();
+            expect(getStub.callCount).to.equal(1);
+            expect(setStub.callCount).to.equal(1);
+
+            SmartCache.enable(false);
+            await foo.bar();
+            expect(getStub.callCount).to.equal(1);
+            expect(setStub.callCount).to.equal(1);
+
+            let error: string = null;
+            try {
+                await foo.error('bar', 0);
+            } catch (e) {
+                error = e.message;
+            }
+            expect(error).to.equal('Foo');
+            expect(getStub.callCount).to.equal(1);
+            expect(setStub.callCount).to.equal(1);
+        } finally {
+            SmartCache.enable(true);
+        }
+    });
+
     it('SmartCache::getCacheEngine()', () => {
         expect(SmartCache.getCacheEngine()).to.be.instanceof(MemoryCache);
     });
@@ -149,6 +176,20 @@ describe('SmartCache', () => {
             expect(setStub.callCount).to.equal(1);
         } finally {
             SmartCache.setSaveEmptyValues(false);
+        }
+    });
+
+    it('SmartCache::setWaitForCacheSet', async () => {
+        try {
+            const setStub = sandbox.stub(SmartCache.getCacheEngine(), 'set', () => true);
+            await foo.bar();
+            expect(setStub.callCount).to.equal(1);
+
+            SmartCache.setWaitForCacheSet(false);
+            await foo.bar();
+            expect(setStub.callCount).to.equal(2);
+        } finally {
+            SmartCache.setWaitForCacheSet(true);
         }
     });
 

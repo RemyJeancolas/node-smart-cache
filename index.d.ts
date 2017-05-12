@@ -11,6 +11,7 @@ export interface SmartCacheEngine {
 }
 
 export class SmartCache {
+    public static enable(enable: boolean): void;
     public static getCacheEngine(): SmartCacheEngine;
     public static setCacheEngine(cacheEngine: SmartCacheEngine): void;
     public static setTtl(ttl: number): void;

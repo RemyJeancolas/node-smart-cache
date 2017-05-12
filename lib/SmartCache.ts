@@ -20,6 +20,7 @@ interface GeneratingProcess {
 }
 
 export class SmartCache {
+    private enabled: boolean = true;
     private cacheEngine: SmartCacheEngine = null;
     private ttl: number = 60;
     private saveEmptyValues: boolean = false;
@@ -38,6 +39,10 @@ export class SmartCache {
             SmartCache.instance = new SmartCache(new MemoryCache());
         }
         return SmartCache.instance;
+    }
+
+    public static enable(enable: boolean): void {
+        SmartCache.getInstance().enabled = enable;
     }
 
     public static getCacheEngine(): SmartCacheEngine {
@@ -60,7 +65,9 @@ export class SmartCache {
         SmartCache.getInstance().waitForCacheSet = wait;
     }
 
+    // tslint:disable-next-line:max-func-body-length
     public static cache(params: SmartCacheParams): any {
+        // tslint:disable-next-line:max-func-body-length
         return (target: any, propertyKey: string, descriptor: TypedPropertyDescriptor<any>): any => {
             const originalMethod = descriptor.value;
             const smartCache = SmartCache.getInstance();
@@ -83,6 +90,11 @@ export class SmartCache {
             target[generatingProcesses][propertyKey] = <GeneratingProcess> {};
 
             descriptor.value = async function (...args: any[]): Promise<any> {
+                // If cache is disabled, just call the original method
+                if (smartCache.enabled !== true) {
+                    return originalMethod.apply(this, args);
+                }
+
                 const keyHandler = typeof(params.keyHandler) === 'string' ? target[params.keyHandler] : params.keyHandler;
                 const cacheKey: string = keyHandler(...args);
                 if (typeof cacheKey !== 'string' || cacheKey.trim() === '') {

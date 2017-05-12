@@ -5,7 +5,7 @@ class MemoryCache {
         this.data = {};
         setInterval(() => {
             this.gc();
-        }, gcInterval * 1000); // Clean memory data every <gcInterval> seconds
+        }, gcInterval * 1000);
     }
     get(key) {
         if (!this.data.hasOwnProperty(key) || (this.data[key].expire && this.data[key].expire < Date.now())) {

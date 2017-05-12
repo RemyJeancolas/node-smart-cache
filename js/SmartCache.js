@@ -13,6 +13,7 @@ const MemoryCache_1 = require("./MemoryCache");
 const generatingProcesses = Symbol('generatingProcesses');
 class SmartCache {
     constructor(cacheEngine) {
+        this.enabled = true;
         this.cacheEngine = null;
         this.ttl = 60;
         this.saveEmptyValues = false;
@@ -26,6 +27,9 @@ class SmartCache {
             SmartCache.instance = new SmartCache(new MemoryCache_1.MemoryCache());
         }
         return SmartCache.instance;
+    }
+    static enable(enable) {
+        SmartCache.getInstance().enabled = enable;
     }
     static getCacheEngine() {
         return SmartCache.getInstance().cacheEngine;
@@ -46,7 +50,6 @@ class SmartCache {
         return (target, propertyKey, descriptor) => {
             const originalMethod = descriptor.value;
             const smartCache = SmartCache.getInstance();
-            // Check key generation method
             if (typeof (params.keyHandler) === 'string') {
                 if (!target.hasOwnProperty(params.keyHandler) || typeof (target[params.keyHandler]) !== 'function') {
                     throw new Error(`Function ${params.keyHandler} doesn't exist on class ${target.constructor.name}`);
@@ -55,21 +58,20 @@ class SmartCache {
             else if (typeof (params.keyHandler) !== 'function') {
                 throw new Error('keyHandler param type must be string or function');
             }
-            // Create global 'generating' var for current class
             if (!target.hasOwnProperty(generatingProcesses)) {
                 target[generatingProcesses] = {};
             }
-            // Create sub object in order to handle current method (identified by 'propertyKey' param)
             target[generatingProcesses][propertyKey] = {};
             descriptor.value = function (...args) {
                 return __awaiter(this, void 0, void 0, function* () {
+                    if (smartCache.enabled !== true) {
+                        return originalMethod.apply(this, args);
+                    }
                     const keyHandler = typeof (params.keyHandler) === 'string' ? target[params.keyHandler] : params.keyHandler;
                     const cacheKey = keyHandler(...args);
                     if (typeof cacheKey !== 'string' || cacheKey.trim() === '') {
                         throw new Error('Invalid cache key received from keyHandler function');
                     }
-                    // If we reach this part, key is valid
-                    // Compute key prefix
                     const keyPrefix = (typeof (params.keyPrefix) === 'string' && params.keyPrefix.trim() !== '')
                         ? params.keyPrefix : `${target.constructor.name}:${propertyKey}`;
                     const fullCacheKey = `${keyPrefix}:${cacheKey}`;
@@ -77,16 +79,12 @@ class SmartCache {
                     if (cachedValue && cachedValue.hasOwnProperty('v')) {
                         return cachedValue.v;
                     }
-                    // If we reach this part, value doesn't exist in cache
                     if (target[generatingProcesses][propertyKey][cacheKey] !== true) {
                         target[generatingProcesses][propertyKey][cacheKey] = true;
-                        // If value is not generating, generate it
                         try {
                             const generatedValue = yield originalMethod.apply(this, args);
-                            // Check if we need to save the generated value in cache
                             const saveEmptyValues = typeof (params.saveEmptyValues) === 'boolean' ? params.saveEmptyValues : smartCache.saveEmptyValues;
                             if (generatedValue != null || saveEmptyValues) {
-                                // Compute cache TTL
                                 let ttl = smartCache.ttl;
                                 if (typeof params.ttl === 'number') {
                                     ttl = params.ttl;
@@ -109,7 +107,6 @@ class SmartCache {
                                     smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
                                 }
                             }
-                            // Send value to all listeners
                             smartCache.emitter.emit(fullCacheKey, null, generatedValue);
                             return generatedValue;
                         }
@@ -124,11 +121,9 @@ class SmartCache {
                     else {
                         return new Promise((resolve) => {
                             smartCache.emitter.once(fullCacheKey, (err, value) => {
-                                // If there has been an error during value generation, just get it directly from initial code
                                 if (err) {
                                     return resolve(originalMethod.apply(this, args));
                                 }
-                                // Else return it
                                 return resolve(value);
                             });
                         });
