@@ -1,5 +1,5 @@
 import {EventEmitter} from 'events';
-import {MemoryCache} from './MemoryCache';
+import {MemoryCache} from './engines/MemoryCache';
 
 export interface SmartCacheParams {
     keyHandler: string|((...args: any[]) => string);
@@ -141,10 +141,13 @@ export class SmartCache {
                                 ttl = dynamicTtl === false ? undefined : dynamicTtl;
                             }
 
-                            if (smartCache.waitForCacheSet) {
-                                await smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
-                            } else {
-                                smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
+                            // Only save in cache if TTL is valid
+                            if (ttl === undefined || ttl > 0) {
+                                if (smartCache.waitForCacheSet) {
+                                    await smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
+                                } else {
+                                    smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
+                                }
                             }
                         }
 

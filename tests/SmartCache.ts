@@ -3,7 +3,7 @@ import * as sinon from 'sinon';
 import {SinonSandbox} from 'sinon';
 import {EventEmitter} from 'events';
 import {SmartCache, SmartCacheEngine} from '../lib/SmartCache';
-import {MemoryCache} from '../lib/MemoryCache';
+import {MemoryCache} from '../lib/engines/MemoryCache';
 
 const cacheEngine: SmartCacheEngine = { get: <any> Function, set: <any> Function };
 const cache = SmartCache.cache;
@@ -55,7 +55,7 @@ class Foo {
         return new Promise<any>(resolve => {
             resolve({
                 input,
-                ttl: ttl > 0 ? ttl + 1 : (ttl === 0 ? false : 'foo')
+                ttl: !isNaN(ttl) ? ttl + 1 : (ttl === undefined ? false : 'foo')
             });
         });
     }
@@ -265,7 +265,7 @@ describe('SmartCache', () => {
         );
 
         await (<MemoryCache> SmartCache.getCacheEngine()).del('dynTtl:dynTtl');
-        await foo.dynamicTtl('input', 0);
+        await foo.dynamicTtl('input', undefined);
         expect(getSpy.callCount).to.equal(9);
         expect(setSpy.callCount).to.equal(7);
         expect(setSpy.lastCall.args).to.deep.equal(
@@ -276,13 +276,18 @@ describe('SmartCache', () => {
         await (<MemoryCache> SmartCache.getCacheEngine()).del('dynTtl:dynTtl');
         let error: string = null;
         try {
-            await foo.dynamicTtl('input', -1);
+            await foo.dynamicTtl('input', <any> '');
         } catch (e) {
             error = e.message;
         }
         expect(getSpy.callCount).to.equal(10);
         expect(setSpy.callCount).to.equal(7);
         expect(error).to.equal('Invalid ttl received from ttl function');
+
+        await (<MemoryCache> SmartCache.getCacheEngine()).del('dynTtl:dynTtl');
+        await foo.dynamicTtl('input', -5);
+        expect(getSpy.callCount).to.equal(11);
+        expect(setSpy.callCount).to.equal(7);
     });
 
     it('SmartCache::cache() - Handle concurrency', async () => {

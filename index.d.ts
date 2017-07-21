@@ -20,8 +20,15 @@ export class SmartCache {
     public static cache(params: SmartCacheParams): any;
 }
 
-export class MemoryCache {
+export class MemoryCache implements SmartCacheEngine {
     constructor(gcInterval?: number);
+    public get(key: string): Promise<any>;
+    public set(key: string, value: any, ttl?: number): Promise<void>;
+    public del(key: string): Promise<void>;
+}
+
+export class FileCache implements SmartCacheEngine {
+    constructor(filePath: string, gcInterval?: number);
     public get(key: string): Promise<any>;
     public set(key: string, value: any, ttl?: number): Promise<void>;
     public del(key: string): Promise<void>;

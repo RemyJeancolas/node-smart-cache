@@ -1,4 +1,6 @@
-export class MemoryCache {
+import {SmartCacheEngine} from '../SmartCache';
+
+export class MemoryCache implements SmartCacheEngine {
     private data: any = {};
 
     public constructor(gcInterval: number = 60) {

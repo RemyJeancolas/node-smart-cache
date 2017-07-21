@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const events_1 = require("events");
-const MemoryCache_1 = require("./MemoryCache");
+const MemoryCache_1 = require("./engines/MemoryCache");
 const generatingProcesses = Symbol('generatingProcesses');
 class SmartCache {
     constructor(cacheEngine) {
@@ -100,11 +100,13 @@ class SmartCache {
                                     }
                                     ttl = dynamicTtl === false ? undefined : dynamicTtl;
                                 }
-                                if (smartCache.waitForCacheSet) {
-                                    yield smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
-                                }
-                                else {
-                                    smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
+                                if (ttl === undefined || ttl > 0) {
+                                    if (smartCache.waitForCacheSet) {
+                                        yield smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
+                                    }
+                                    else {
+                                        smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
+                                    }
                                 }
                             }
                             smartCache.emitter.emit(fullCacheKey, null, generatedValue);
