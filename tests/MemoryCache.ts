@@ -24,7 +24,7 @@ describe('MemoryCache', () => {
     });
 
     it('MemoryCache::get()', async () => {
-        sandbox.stub(memoryCache, 'gc', () => true);
+        sandbox.stub((<any> memoryCache), 'gc').returns(true);
         let result = await memoryCache.get('foo');
         expect(result).to.equal(null, 'Result should be null');
 
@@ -38,7 +38,7 @@ describe('MemoryCache', () => {
     });
 
     it('MemoryCache::set()', async () => {
-        const spy = sinon.spy(memoryCache, 'gc');
+        const spy = sinon.spy((<any> memoryCache), 'gc');
         try {
             await memoryCache.set('foo', 'bar', 65);
             let result = await memoryCache.get('foo');

@@ -154,8 +154,8 @@ describe('SmartCache', () => {
 
     it('SmartCache::setCacheEngine()', async () => {
         try {
-            const getStub = sandbox.stub(cacheEngine, 'get', () => <any> null);
-            const setStub = sandbox.stub(cacheEngine, 'set', () => true);
+            const getStub = sandbox.stub(cacheEngine, 'get').returns(null);
+            const setStub = sandbox.stub(cacheEngine, 'set').returns(true);
             SmartCache.setCacheEngine(cacheEngine);
             await foo.bar();
             expect(getStub.callCount).to.equal(1);
@@ -167,7 +167,7 @@ describe('SmartCache', () => {
 
     it('SmartCache::setSaveEmptyValues', async () => {
         try {
-            const setStub = sandbox.stub(SmartCache.getCacheEngine(), 'set', () => true);
+            const setStub = sandbox.stub(SmartCache.getCacheEngine(), 'set').returns(true);
             await foo.nullValues(null);
             expect(setStub.callCount).to.equal(0);
 
@@ -181,7 +181,7 @@ describe('SmartCache', () => {
 
     it('SmartCache::setWaitForCacheSet', async () => {
         try {
-            const setStub = sandbox.stub(SmartCache.getCacheEngine(), 'set', () => true);
+            const setStub = sandbox.stub(SmartCache.getCacheEngine(), 'set').returns(true);
             await foo.bar();
             expect(setStub.callCount).to.equal(1);
 

@@ -35,7 +35,7 @@ describe('FileCache', () => {
 
     it ('FileCache::constructor()', () => {
         const clock = sandbox.useFakeTimers();
-        const gc = sandbox.stub(FileCache.prototype, 'gc');
+        const gc = sandbox.stub((<any> FileCache.prototype), 'gc');
         fileCache = new FileCache(tmpDir);
         expect(gc.callCount).to.equal(0);
         clock.tick(61 * 1000);
@@ -86,7 +86,7 @@ describe('FileCache', () => {
 
     it('FileCache::get', async() => {
         const clock = sandbox.useFakeTimers(Date.now());
-        sandbox.stub(FileCache.prototype, 'gc');
+        sandbox.stub((<any> FileCache.prototype), 'gc');
         fileCache = new FileCache(tmpDir, 10);
 
         expect(await fileCache.get('foo')).to.equal(null, 'Result should be as expected');
@@ -100,9 +100,9 @@ describe('FileCache', () => {
         fs.writeFileSync(path.resolve(tmpDir, 'bar.cache'), 'foo');
         expect(await fileCache.get('bar')).to.equal('foo');
 
-        const readFileStub = sandbox.stub(fs, 'readFile', ((name: string, callback: (err?: Error) => any) => {
+        const readFileStub = sandbox.stub(fs, 'readFile').callsFake((name: string, callback: (err?: Error) => any) => {
             callback(new Error('Foobar'));
-        }));
+        });
         let error: string = null;
         try {
             await fileCache.get('bar');
@@ -112,9 +112,9 @@ describe('FileCache', () => {
         expect(error).to.equal('Foobar');
 
         readFileStub.restore();
-        sandbox.stub(fs, 'readdir', ((path: string, callback: (err?: Error) => any) => {
+        sandbox.stub(fs, 'readdir').callsFake((path: string, callback: (err?: Error) => any) => {
             callback(new Error('Foo'));
-        }));
+        });
         try {
             await fileCache.get('bar');
         } catch (e) {
@@ -125,7 +125,7 @@ describe('FileCache', () => {
 
     it('FileCache::set', async() => {
         const clock = sandbox.useFakeTimers(Date.now());
-        sandbox.stub(FileCache.prototype, 'gc');
+        sandbox.stub((<any> FileCache.prototype), 'gc');
         fileCache = new FileCache(tmpDir, 10);
 
         expect(() => fs.readFileSync(path.resolve(tmpDir, 'foobar.cache'))).to.throw();
@@ -149,9 +149,9 @@ describe('FileCache', () => {
                 path.resolve(tmpDir, `foobar.${Date.now() + 10000}.cache`)).toString()
             ).to.equal('"foobar"');
 
-        const writeFileStub = sandbox.stub(fs, 'writeFile', ((name: string, data: any, callback: (err?: Error) => any) => {
+        const writeFileStub = sandbox.stub(fs, 'writeFile').callsFake((name: string, data: any, callback: (err?: Error) => any) => {
             callback(new Error('Bar'));
-        }));
+        });
         let error: string = null;
         try {
             await fileCache.set('foobar', 'foobar', 10);
@@ -164,22 +164,21 @@ describe('FileCache', () => {
     });
 
     it('FileCache::del', async() => {
-        sandbox.stub(FileCache.prototype, 'getFilesByCacheKey').returns(['foo', 'bar']);
-        let unlinkStub = sandbox.stub(fs, 'unlink', (fileName: string, callback: (err?: Error) => any) => {
+        sandbox.stub((<any> FileCache.prototype), 'getFilesByCacheKey').returns(['foo', 'bar']);
+        const unlinkStub = sandbox.stub(fs, 'unlink').callsFake((fileName: string, callback: (err?: Error) => any) => {
             callback();
         });
         fileCache = new FileCache(tmpDir, 10);
         await fileCache.del('foo');
         expect(unlinkStub.callCount).to.equal(2);
 
-        unlinkStub.restore();
-        unlinkStub = sandbox.stub(fs, 'unlink', (fileName: string, callback: (err?: Error) => any) => {
+        unlinkStub.callsFake((fileName: string, callback: (err?: Error) => any) => {
             callback(<any> {code: 'foo'});
         });
         const notFoundError = new Error();
         (<any> notFoundError).code = 'ENOENT';
         try { await fileCache.del('foo'); } catch (e) {} // tslint:disable-line:no-empty
-        expect(unlinkStub.callCount).to.equal(1);
+        expect(unlinkStub.callCount).to.equal(3);
     });
 
     it('FileCache::gc', async() => {
