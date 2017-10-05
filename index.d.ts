@@ -3,6 +3,7 @@ export interface SmartCacheParams {
     ttl?: number|false|((...args: any[]) => number|false);
     keyPrefix?: string;
     saveEmptyValues?: boolean;
+    staleWhileRevalidate?: number|false;
 }
 
 export interface SmartCacheEngine {
@@ -17,6 +18,7 @@ export class SmartCache {
     public static setTtl(ttl: number): void;
     public static setSaveEmptyValues(saveEmptyValues: boolean): void;
     public static setWaitForCacheSet(wait: boolean): void;
+    public static setStaleWhileRevalidate(duration: number|false): void;
     public static cache(params: SmartCacheParams): any;
 }
 

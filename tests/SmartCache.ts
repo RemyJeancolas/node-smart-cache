@@ -252,7 +252,7 @@ describe('SmartCache', () => {
         (expect(await foo.nullValuesAlwaysSave(null))).to.equal(null, 'Result should be null');
         expect(getSpy.callCount).to.equal(7);
         expect(setSpy.callCount).to.equal(5);
-        expect(setSpy.lastCall.args).to.deep.equal(['nvas:nvas', { v: null}, undefined], 'Result should be as expected');
+        expect(setSpy.lastCall.args).to.deep.equal(['nvas:nvas', { v: null}], 'Result should be as expected');
         await (<MemoryCache> SmartCache.getCacheEngine()).del('nvas:nvas');
 
         // Test dynamic TTL
@@ -269,7 +269,7 @@ describe('SmartCache', () => {
         expect(getSpy.callCount).to.equal(9);
         expect(setSpy.callCount).to.equal(7);
         expect(setSpy.lastCall.args).to.deep.equal(
-            ['dynTtl:dynTtl', { v: {input: 'input', ttl: false} }, undefined],
+            ['dynTtl:dynTtl', { v: {input: 'input', ttl: false} }],
             'Result should be as expected'
         );
 

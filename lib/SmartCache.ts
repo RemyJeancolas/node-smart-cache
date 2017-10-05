@@ -6,6 +6,7 @@ export interface SmartCacheParams {
     ttl?: number|false|((...args: any[]) => number|false);
     keyPrefix?: string;
     saveEmptyValues?: boolean;
+    staleWhileRevalidate?: number|false;
 }
 
 export interface SmartCacheEngine {
@@ -24,8 +25,9 @@ export class SmartCache {
     private cacheEngine: SmartCacheEngine = null;
     private ttl: number = 60;
     private saveEmptyValues: boolean = false;
-    private emitter: EventEmitter = null;
     private waitForCacheSet: boolean = true;
+    private staleWhileRevalidate: number = 0;
+    private emitter: EventEmitter = null;
 
     private static instance: SmartCache = null;
 
@@ -65,9 +67,11 @@ export class SmartCache {
         SmartCache.getInstance().waitForCacheSet = wait;
     }
 
-    // tslint:disable-next-line:max-func-body-length
+    public static setStaleWhileRevalidate(duration: number|false): void {
+        SmartCache.getInstance().staleWhileRevalidate = typeof duration === 'number' && duration >= 0 ? duration : 0;
+    }
+
     public static cache(params: SmartCacheParams): any {
-        // tslint:disable-next-line:max-func-body-length
         return (target: any, propertyKey: string, descriptor: TypedPropertyDescriptor<any>): any => {
             const originalMethod = descriptor.value;
             const smartCache = SmartCache.getInstance();
@@ -103,77 +107,113 @@ export class SmartCache {
 
                 // If we reach this part, key is valid
 
+                // Get stale duration
+                const staleTtl = typeof params.staleWhileRevalidate === 'number' && params.staleWhileRevalidate >= 0
+                    ? params.staleWhileRevalidate
+                    : (params.staleWhileRevalidate === false ? 0 : smartCache.staleWhileRevalidate);
+
                 // Compute key prefix
                 const keyPrefix = (typeof(params.keyPrefix) === 'string' && params.keyPrefix.trim() !== '')
                     ? params.keyPrefix : `${target.constructor.name}:${propertyKey}`;
 
                 const fullCacheKey = `${keyPrefix}:${cacheKey}`;
                 const cachedValue = await smartCache.cacheEngine.get(fullCacheKey);
-                if (cachedValue && cachedValue.hasOwnProperty('v')) { // If value exists in cache, just return it
-                    return cachedValue.v;
-                }
+                if (cachedValue && cachedValue.hasOwnProperty('v')) {
+                    // Check if data is stale
+                    if (cachedValue.hasOwnProperty('e') && cachedValue.e > Date.now()) {
+                        // Data is stale, check if we want to return stale data
+                        if (staleTtl > 0) {
+                            // Start regenerating new value
+                            SmartCache.generateAndStoreValue(
+                                originalMethod, args, params, smartCache, fullCacheKey, target, propertyKey, cacheKey, staleTtl
+                            );
 
-                // If we reach this part, value doesn't exist in cache
-                if (target[generatingProcesses][propertyKey][cacheKey] !== true) {
-                    target[generatingProcesses][propertyKey][cacheKey] = true;
-
-                    // If value is not generating, generate it
-                    try {
-                        const generatedValue = await originalMethod.apply(this, args);
-
-                        // Check if we need to save the generated value in cache
-                        const saveEmptyValues =
-                            typeof(params.saveEmptyValues) === 'boolean' ? params.saveEmptyValues : smartCache.saveEmptyValues;
-
-                        if (generatedValue != null || saveEmptyValues) {
-                            // Compute cache TTL
-                            let ttl = smartCache.ttl;
-                            if (typeof params.ttl === 'number') {
-                                ttl = params.ttl;
-                            } else if (params.ttl === false) {
-                                ttl = undefined;
-                            } else if (typeof params.ttl === 'function') {
-                                args.push(generatedValue);
-                                const dynamicTtl = params.ttl(...args);
-                                if (typeof dynamicTtl !== 'number' && dynamicTtl !== false) {
-                                    throw new Error('Invalid ttl received from ttl function');
-                                }
-                                ttl = dynamicTtl === false ? undefined : dynamicTtl;
-                            }
-
-                            // Only save in cache if TTL is valid
-                            if (ttl === undefined || ttl > 0) {
-                                if (smartCache.waitForCacheSet) {
-                                    await smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
-                                } else {
-                                    smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
-                                }
-                            }
+                            // Return stale value from cache
+                            return cachedValue.v;
                         }
-
-                        // Send value to all listeners
-                        smartCache.emitter.emit(fullCacheKey, null, generatedValue);
-
-                        return generatedValue;
-                    } catch (err) {
-                        smartCache.emitter.emit(fullCacheKey, err);
-                        throw err;
-                    } finally {
-                        target[generatingProcesses][propertyKey][cacheKey] = false;
+                    } else {
+                        // Return value from cache
+                        return cachedValue.v;
                     }
-                } else { // Else wait for value generation
-                    return new Promise<any>((resolve) => {
-                        smartCache.emitter.once(fullCacheKey, (err: Error, value: any) => {
-                            // If there has been an error during value generation, just get it directly from initial code
-                            if (err) {
-                                return resolve(originalMethod.apply(this, args));
-                            }
-                            // Else return it
-                            return resolve(value);
-                        });
-                    });
                 }
+
+                // If we reach this part, value doesn't exist in cache or is stale and we don't want it
+                return SmartCache.generateAndStoreValue(
+                    originalMethod, args, params, smartCache, fullCacheKey, target, propertyKey, cacheKey, staleTtl
+                );
             };
         };
+    }
+
+    private static async generateAndStoreValue(
+        originalMethod: any, args: any[], params: SmartCacheParams, smartCache: SmartCache,
+        fullCacheKey: string, target: any, propertyKey: string, cacheKey: string, staleTtl: number
+    ): Promise<any> {
+        // If value is not generating, generate it
+        if (target[generatingProcesses][propertyKey][cacheKey] !== true) {
+            target[generatingProcesses][propertyKey][cacheKey] = true;
+            try {
+                const generatedValue = await originalMethod.apply(this, args);
+
+                // Check if we need to save the generated value in cache
+                const saveEmptyValues =
+                    typeof params.saveEmptyValues === 'boolean' ? params.saveEmptyValues : smartCache.saveEmptyValues;
+
+                if (generatedValue != null || saveEmptyValues) {
+                    // Compute cache TTL
+                    let ttl = smartCache.ttl;
+                    if (typeof params.ttl === 'number') {
+                        ttl = params.ttl;
+                    } else if (params.ttl === false) {
+                        ttl = undefined;
+                    } else if (typeof params.ttl === 'function') {
+                        args.push(generatedValue);
+                        const dynamicTtl = params.ttl(...args);
+                        if (typeof dynamicTtl !== 'number' && dynamicTtl !== false) {
+                            throw new Error('Invalid ttl received from ttl function');
+                        }
+                        ttl = dynamicTtl === false ? undefined : dynamicTtl;
+                    }
+
+                    // Store data in cache
+                    if (smartCache.waitForCacheSet) {
+                        await SmartCache.storeDataInCache(smartCache.cacheEngine, fullCacheKey, generatedValue, ttl, staleTtl);
+                    } else {
+                        SmartCache.storeDataInCache(smartCache.cacheEngine, fullCacheKey, generatedValue, ttl, staleTtl);
+                    }
+                }
+
+                // Send value to all listeners
+                smartCache.emitter.emit(fullCacheKey, null, generatedValue);
+
+                return generatedValue;
+            } catch (err) {
+                smartCache.emitter.emit(fullCacheKey, err);
+                throw err;
+            } finally {
+                target[generatingProcesses][propertyKey][cacheKey] = false;
+            }
+        } else { // Else wait for value generation
+            return new Promise<any>((resolve) => {
+                smartCache.emitter.once(fullCacheKey, (err: Error, value: any) => {
+                    // If there has been an error during value generation, just get it directly from initial code
+                    if (err) {
+                        return resolve(originalMethod.apply(this, args));
+                    }
+                    // Else return it
+                    return resolve(value);
+                });
+            });
+        }
+    }
+
+    private static async storeDataInCache(
+        engine: SmartCacheEngine, key: string, value: any, ttl: number, staleTtl: number
+    ): Promise<void> {
+        if (ttl === undefined) {
+            await engine.set(key, { v: value });
+        } else if (ttl > 0) {
+            await engine.set(key, Object.assign({ v: value }, staleTtl > 0 ? { exp: Date.now() + ttl * 1000 } : {}), ttl + staleTtl);
+        }
     }
 }

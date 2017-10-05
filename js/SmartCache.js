@@ -17,8 +17,9 @@ class SmartCache {
         this.cacheEngine = null;
         this.ttl = 60;
         this.saveEmptyValues = false;
-        this.emitter = null;
         this.waitForCacheSet = true;
+        this.staleWhileRevalidate = 0;
+        this.emitter = null;
         this.cacheEngine = cacheEngine;
         this.emitter = new events_1.EventEmitter();
     }
@@ -46,6 +47,9 @@ class SmartCache {
     static setWaitForCacheSet(wait) {
         SmartCache.getInstance().waitForCacheSet = wait;
     }
+    static setStaleWhileRevalidate(duration) {
+        SmartCache.getInstance().staleWhileRevalidate = typeof duration === 'number' && duration >= 0 ? duration : 0;
+    }
     static cache(params) {
         return (target, propertyKey, descriptor) => {
             const originalMethod = descriptor.value;
@@ -72,67 +76,91 @@ class SmartCache {
                     if (typeof cacheKey !== 'string' || cacheKey.trim() === '') {
                         throw new Error('Invalid cache key received from keyHandler function');
                     }
+                    const staleTtl = typeof params.staleWhileRevalidate === 'number' && params.staleWhileRevalidate >= 0
+                        ? params.staleWhileRevalidate
+                        : (params.staleWhileRevalidate === false ? 0 : smartCache.staleWhileRevalidate);
                     const keyPrefix = (typeof (params.keyPrefix) === 'string' && params.keyPrefix.trim() !== '')
                         ? params.keyPrefix : `${target.constructor.name}:${propertyKey}`;
                     const fullCacheKey = `${keyPrefix}:${cacheKey}`;
                     const cachedValue = yield smartCache.cacheEngine.get(fullCacheKey);
                     if (cachedValue && cachedValue.hasOwnProperty('v')) {
-                        return cachedValue.v;
-                    }
-                    if (target[generatingProcesses][propertyKey][cacheKey] !== true) {
-                        target[generatingProcesses][propertyKey][cacheKey] = true;
-                        try {
-                            const generatedValue = yield originalMethod.apply(this, args);
-                            const saveEmptyValues = typeof (params.saveEmptyValues) === 'boolean' ? params.saveEmptyValues : smartCache.saveEmptyValues;
-                            if (generatedValue != null || saveEmptyValues) {
-                                let ttl = smartCache.ttl;
-                                if (typeof params.ttl === 'number') {
-                                    ttl = params.ttl;
-                                }
-                                else if (params.ttl === false) {
-                                    ttl = undefined;
-                                }
-                                else if (typeof params.ttl === 'function') {
-                                    args.push(generatedValue);
-                                    const dynamicTtl = params.ttl(...args);
-                                    if (typeof dynamicTtl !== 'number' && dynamicTtl !== false) {
-                                        throw new Error('Invalid ttl received from ttl function');
-                                    }
-                                    ttl = dynamicTtl === false ? undefined : dynamicTtl;
-                                }
-                                if (ttl === undefined || ttl > 0) {
-                                    if (smartCache.waitForCacheSet) {
-                                        yield smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
-                                    }
-                                    else {
-                                        smartCache.cacheEngine.set(fullCacheKey, { v: generatedValue }, ttl);
-                                    }
-                                }
+                        if (cachedValue.hasOwnProperty('e') && cachedValue.e > Date.now()) {
+                            if (staleTtl > 0) {
+                                SmartCache.generateAndStoreValue(originalMethod, args, params, smartCache, fullCacheKey, target, propertyKey, cacheKey, staleTtl);
+                                return cachedValue.v;
                             }
-                            smartCache.emitter.emit(fullCacheKey, null, generatedValue);
-                            return generatedValue;
                         }
-                        catch (err) {
-                            smartCache.emitter.emit(fullCacheKey, err);
-                            throw err;
-                        }
-                        finally {
-                            target[generatingProcesses][propertyKey][cacheKey] = false;
+                        else {
+                            return cachedValue.v;
                         }
                     }
-                    else {
-                        return new Promise((resolve) => {
-                            smartCache.emitter.once(fullCacheKey, (err, value) => {
-                                if (err) {
-                                    return resolve(originalMethod.apply(this, args));
-                                }
-                                return resolve(value);
-                            });
-                        });
-                    }
+                    return SmartCache.generateAndStoreValue(originalMethod, args, params, smartCache, fullCacheKey, target, propertyKey, cacheKey, staleTtl);
                 });
             };
         };
+    }
+    static generateAndStoreValue(originalMethod, args, params, smartCache, fullCacheKey, target, propertyKey, cacheKey, staleTtl) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (target[generatingProcesses][propertyKey][cacheKey] !== true) {
+                target[generatingProcesses][propertyKey][cacheKey] = true;
+                try {
+                    const generatedValue = yield originalMethod.apply(this, args);
+                    const saveEmptyValues = typeof params.saveEmptyValues === 'boolean' ? params.saveEmptyValues : smartCache.saveEmptyValues;
+                    if (generatedValue != null || saveEmptyValues) {
+                        let ttl = smartCache.ttl;
+                        if (typeof params.ttl === 'number') {
+                            ttl = params.ttl;
+                        }
+                        else if (params.ttl === false) {
+                            ttl = undefined;
+                        }
+                        else if (typeof params.ttl === 'function') {
+                            args.push(generatedValue);
+                            const dynamicTtl = params.ttl(...args);
+                            if (typeof dynamicTtl !== 'number' && dynamicTtl !== false) {
+                                throw new Error('Invalid ttl received from ttl function');
+                            }
+                            ttl = dynamicTtl === false ? undefined : dynamicTtl;
+                        }
+                        if (smartCache.waitForCacheSet) {
+                            yield SmartCache.storeDataInCache(smartCache.cacheEngine, fullCacheKey, generatedValue, ttl, staleTtl);
+                        }
+                        else {
+                            SmartCache.storeDataInCache(smartCache.cacheEngine, fullCacheKey, generatedValue, ttl, staleTtl);
+                        }
+                    }
+                    smartCache.emitter.emit(fullCacheKey, null, generatedValue);
+                    return generatedValue;
+                }
+                catch (err) {
+                    smartCache.emitter.emit(fullCacheKey, err);
+                    throw err;
+                }
+                finally {
+                    target[generatingProcesses][propertyKey][cacheKey] = false;
+                }
+            }
+            else {
+                return new Promise((resolve) => {
+                    smartCache.emitter.once(fullCacheKey, (err, value) => {
+                        if (err) {
+                            return resolve(originalMethod.apply(this, args));
+                        }
+                        return resolve(value);
+                    });
+                });
+            }
+        });
+    }
+    static storeDataInCache(engine, key, value, ttl, staleTtl) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (ttl === undefined) {
+                yield engine.set(key, { v: value });
+            }
+            else if (ttl > 0) {
+                yield engine.set(key, Object.assign({ v: value }, staleTtl > 0 ? { exp: Date.now() + ttl * 1000 } : {}), ttl + staleTtl);
+            }
+        });
     }
 }
 SmartCache.instance = null;
