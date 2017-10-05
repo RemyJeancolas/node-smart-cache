@@ -106,10 +106,10 @@ class FileCache {
             }
         });
     }
-    readDir(path) {
+    readDir(dir) {
         return __awaiter(this, void 0, void 0, function* () {
             return new Promise((resolve, reject) => {
-                fs.readdir(path, (err, files) => {
+                fs.readdir(dir, (err, files) => {
                     if (err) {
                         return reject(err);
                     }

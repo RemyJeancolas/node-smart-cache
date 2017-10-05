@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import {SmartCacheEngine} from '../SmartCache';
+import { SmartCacheEngine } from '../SmartCache';
 
 export class FileCache implements SmartCacheEngine {
     private filePath: string;
@@ -109,9 +109,9 @@ export class FileCache implements SmartCacheEngine {
         }
     }
 
-    private async readDir(path: string): Promise<string[]> {
+    private async readDir(dir: string): Promise<string[]> {
         return new Promise<string[]>((resolve, reject) => {
-            fs.readdir(path, (err, files) => {
+            fs.readdir(dir, (err, files) => {
                 if (err) {
                     return reject(err);
                 }

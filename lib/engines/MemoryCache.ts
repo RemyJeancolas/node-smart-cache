@@ -1,4 +1,4 @@
-import {SmartCacheEngine} from '../SmartCache';
+import { SmartCacheEngine } from '../SmartCache';
 
 export class MemoryCache implements SmartCacheEngine {
     private data: any = {};

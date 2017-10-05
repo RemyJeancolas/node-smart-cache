@@ -1,9 +1,9 @@
-import {expect} from 'chai';
+import { expect } from 'chai';
 import * as sinon from 'sinon';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
-import {FileCache} from '../lib/engines/FileCache';
+import { FileCache } from '../lib/engines/FileCache';
 
 let sandbox: sinon.SinonSandbox;
 let tmpDir: string;
@@ -112,7 +112,7 @@ describe('FileCache', () => {
         expect(error).to.equal('Foobar');
 
         readFileStub.restore();
-        sandbox.stub(fs, 'readdir').callsFake((path: string, callback: (err?: Error) => any) => {
+        sandbox.stub(fs, 'readdir').callsFake((dir: string, callback: (err?: Error) => any) => {
             callback(new Error('Foo'));
         });
         try {

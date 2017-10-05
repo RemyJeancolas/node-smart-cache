@@ -4,7 +4,7 @@
   "description": "Cache module that handles asynchronous data and concurrency",
   "main": "js/index.js",
   "scripts": {
-    "lint": "tslint -c tslint.json ./lib/{,**/}*.ts ./tests/{,**/}*.ts --format verbose",
+    "lint": "tslint --type-check --format verbose --project tsconfig-linter.json -c tslint.json ./lib/{,**/}*.ts ./tests/{,**/}*.ts",
     "build": "rm -rf js && tsc",
     "test": "mocha tests --compilers ts:ts-node/register --bail",
     "cover": "nyc --report-dir tests/coverage npm run test",
@@ -37,8 +37,8 @@
     "nyc": "^10.1.2",
     "sinon": "^2.3.8",
     "ts-node": "^3.2.1",
-    "tslint": "^4.4.2",
-    "tslint-microsoft-contrib": "^4.0.0",
+    "tslint": "^5.6.0",
+    "tslint-microsoft-contrib": "^5.0.1",
     "typescript": "^2.4.2"
   },
   "typings": "index.d.ts",

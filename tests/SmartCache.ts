@@ -1,9 +1,9 @@
-import {expect} from 'chai';
+import { expect } from 'chai';
 import * as sinon from 'sinon';
-import {SinonSandbox} from 'sinon';
-import {EventEmitter} from 'events';
-import {SmartCache, SmartCacheEngine} from '../lib/SmartCache';
-import {MemoryCache} from '../lib/engines/MemoryCache';
+import { SinonSandbox } from 'sinon';
+import { EventEmitter } from 'events';
+import { SmartCache, SmartCacheEngine } from '../lib/SmartCache';
+import { MemoryCache } from '../lib/engines/MemoryCache';
 
 const cacheEngine: SmartCacheEngine = { get: <any> Function, set: <any> Function };
 const cache = SmartCache.cache;
@@ -74,22 +74,22 @@ class Foo {
         return 'fail';
     }
 
-    private generateKey(): string {
+    private generateKey(): string { // tslint:disable-line:no-unused-variable
         return 'key';
     }
 
-    private generateKey2(input: string): string {
+    private generateKey2(input: string): string { // tslint:disable-line:no-unused-variable
         return input;
     }
 
-    private failHandler(): number {
+    private failHandler(): number { // tslint:disable-line:no-unused-variable
         return 2;
     }
 }
 
 let invalidHandlerError: string = null;
 try {
-    class Fail {
+    class Fail { // tslint:disable-line:no-unused-variable
         @cache({keyHandler: 'null'})
         public foo(): Promise<string> {
             return Promise.resolve('bar');
@@ -101,7 +101,7 @@ try {
 
 let invalidHandlerError2: string = null;
 try {
-    class Fail2 {
+    class Fail2 { // tslint:disable-line:no-unused-variable
         @cache({keyHandler: <any> 2})
         public foo(): Promise<string> {
             return Promise.resolve('bar');

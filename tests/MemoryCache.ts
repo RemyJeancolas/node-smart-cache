@@ -1,7 +1,7 @@
-import {expect} from 'chai';
+import { expect } from 'chai';
 import * as sinon from 'sinon';
-import {MemoryCache} from '../lib/engines/MemoryCache';
-import {SinonSandbox, SinonFakeTimers} from 'sinon';
+import { MemoryCache } from '../lib/engines/MemoryCache';
+import { SinonSandbox, SinonFakeTimers } from 'sinon';
 
 let sandbox: SinonSandbox;
 let memoryCache: MemoryCache = null;

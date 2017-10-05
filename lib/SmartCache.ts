@@ -1,5 +1,5 @@
-import {EventEmitter} from 'events';
-import {MemoryCache} from './engines/MemoryCache';
+import { EventEmitter } from 'events';
+import { MemoryCache } from './engines/MemoryCache';
 
 export interface SmartCacheParams {
     keyHandler: string|((...args: any[]) => string);
