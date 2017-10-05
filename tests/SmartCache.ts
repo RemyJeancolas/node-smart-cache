@@ -193,6 +193,16 @@ describe('SmartCache', () => {
         }
     });
 
+    it('SmartCache::setStaleWhileRevalidate', async () => {
+        SmartCache.setStaleWhileRevalidate(-1);
+        expect((<any> SmartCache).getInstance().staleWhileRevalidate).to.equal(0);
+        SmartCache.setStaleWhileRevalidate(false);
+        expect((<any> SmartCache).getInstance().staleWhileRevalidate).to.equal(0);
+        SmartCache.setStaleWhileRevalidate(11);
+        expect((<any> SmartCache).getInstance().staleWhileRevalidate).to.equal(11);
+        SmartCache.setStaleWhileRevalidate(false);
+    });
+
     it('SmartCache::setTtl()', async () => {
         try {
             const spy = sandbox.spy(MemoryCache.prototype, 'set');
