@@ -118,14 +118,15 @@ export class SmartCache {
 
                 const fullCacheKey = `${keyPrefix}:${cacheKey}`;
                 const cachedValue = await smartCache.cacheEngine.get(fullCacheKey);
+                const self = this;
                 if (cachedValue && cachedValue.hasOwnProperty('v')) {
                     // Check if data is stale
-                    if (cachedValue.hasOwnProperty('e') && cachedValue.e > Date.now()) {
+                    if (cachedValue.hasOwnProperty('e') && cachedValue.e < Date.now()) {
                         // Data is stale, check if we want to return stale data
                         if (staleTtl > 0) {
                             // Start regenerating new value
                             SmartCache.generateAndStoreValue(
-                                originalMethod, args, params, smartCache, fullCacheKey, target, propertyKey, cacheKey, staleTtl
+                                self, originalMethod, args, params, smartCache, fullCacheKey, target, propertyKey, cacheKey, staleTtl
                             );
 
                             // Return stale value from cache
@@ -139,21 +140,21 @@ export class SmartCache {
 
                 // If we reach this part, value doesn't exist in cache or is stale and we don't want it
                 return SmartCache.generateAndStoreValue(
-                    originalMethod, args, params, smartCache, fullCacheKey, target, propertyKey, cacheKey, staleTtl
+                    self, originalMethod, args, params, smartCache, fullCacheKey, target, propertyKey, cacheKey, staleTtl
                 );
             };
         };
     }
 
     private static async generateAndStoreValue(
-        originalMethod: any, args: any[], params: SmartCacheParams, smartCache: SmartCache,
-        fullCacheKey: string, target: any, propertyKey: string, cacheKey: string, staleTtl: number
+        self: any, originalMethod: any, args: any[], params: SmartCacheParams, smartCache: SmartCache, fullCacheKey: string, target: any,
+        propertyKey: string, cacheKey: string, staleTtl: number
     ): Promise<any> {
         // If value is not generating, generate it
         if (target[generatingProcesses][propertyKey][cacheKey] !== true) {
             target[generatingProcesses][propertyKey][cacheKey] = true;
             try {
-                const generatedValue = await originalMethod.apply(this, args);
+                const generatedValue = await originalMethod.apply(self, args);
 
                 // Check if we need to save the generated value in cache
                 const saveEmptyValues =
@@ -198,7 +199,7 @@ export class SmartCache {
                 smartCache.emitter.once(fullCacheKey, (err: Error, value: any) => {
                     // If there has been an error during value generation, just get it directly from initial code
                     if (err) {
-                        return resolve(originalMethod.apply(this, args));
+                        return resolve(originalMethod.apply(self, args));
                     }
                     // Else return it
                     return resolve(value);
@@ -213,7 +214,7 @@ export class SmartCache {
         if (ttl === undefined) {
             await engine.set(key, { v: value });
         } else if (ttl > 0) {
-            await engine.set(key, Object.assign({ v: value }, staleTtl > 0 ? { exp: Date.now() + ttl * 1000 } : {}), ttl + staleTtl);
+            await engine.set(key, Object.assign({ v: value }, staleTtl > 0 ? { e: Date.now() + ttl * 1000 } : {}), ttl + staleTtl);
         }
     }
 }

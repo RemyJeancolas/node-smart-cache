@@ -83,10 +83,11 @@ class SmartCache {
                         ? params.keyPrefix : `${target.constructor.name}:${propertyKey}`;
                     const fullCacheKey = `${keyPrefix}:${cacheKey}`;
                     const cachedValue = yield smartCache.cacheEngine.get(fullCacheKey);
+                    const self = this;
                     if (cachedValue && cachedValue.hasOwnProperty('v')) {
-                        if (cachedValue.hasOwnProperty('e') && cachedValue.e > Date.now()) {
+                        if (cachedValue.hasOwnProperty('e') && cachedValue.e < Date.now()) {
                             if (staleTtl > 0) {
-                                SmartCache.generateAndStoreValue(originalMethod, args, params, smartCache, fullCacheKey, target, propertyKey, cacheKey, staleTtl);
+                                SmartCache.generateAndStoreValue(self, originalMethod, args, params, smartCache, fullCacheKey, target, propertyKey, cacheKey, staleTtl);
                                 return cachedValue.v;
                             }
                         }
@@ -94,17 +95,17 @@ class SmartCache {
                             return cachedValue.v;
                         }
                     }
-                    return SmartCache.generateAndStoreValue(originalMethod, args, params, smartCache, fullCacheKey, target, propertyKey, cacheKey, staleTtl);
+                    return SmartCache.generateAndStoreValue(self, originalMethod, args, params, smartCache, fullCacheKey, target, propertyKey, cacheKey, staleTtl);
                 });
             };
         };
     }
-    static generateAndStoreValue(originalMethod, args, params, smartCache, fullCacheKey, target, propertyKey, cacheKey, staleTtl) {
+    static generateAndStoreValue(self, originalMethod, args, params, smartCache, fullCacheKey, target, propertyKey, cacheKey, staleTtl) {
         return __awaiter(this, void 0, void 0, function* () {
             if (target[generatingProcesses][propertyKey][cacheKey] !== true) {
                 target[generatingProcesses][propertyKey][cacheKey] = true;
                 try {
-                    const generatedValue = yield originalMethod.apply(this, args);
+                    const generatedValue = yield originalMethod.apply(self, args);
                     const saveEmptyValues = typeof params.saveEmptyValues === 'boolean' ? params.saveEmptyValues : smartCache.saveEmptyValues;
                     if (generatedValue != null || saveEmptyValues) {
                         let ttl = smartCache.ttl;
@@ -144,7 +145,7 @@ class SmartCache {
                 return new Promise((resolve) => {
                     smartCache.emitter.once(fullCacheKey, (err, value) => {
                         if (err) {
-                            return resolve(originalMethod.apply(this, args));
+                            return resolve(originalMethod.apply(self, args));
                         }
                         return resolve(value);
                     });
@@ -158,7 +159,7 @@ class SmartCache {
                 yield engine.set(key, { v: value });
             }
             else if (ttl > 0) {
-                yield engine.set(key, Object.assign({ v: value }, staleTtl > 0 ? { exp: Date.now() + ttl * 1000 } : {}), ttl + staleTtl);
+                yield engine.set(key, Object.assign({ v: value }, staleTtl > 0 ? { e: Date.now() + ttl * 1000 } : {}), ttl + staleTtl);
             }
         });
     }
