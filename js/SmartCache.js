@@ -76,9 +76,11 @@ class SmartCache {
                     if (typeof cacheKey !== 'string' || cacheKey.trim() === '') {
                         throw new Error('Invalid cache key received from keyHandler function');
                     }
-                    const staleTtl = typeof params.staleWhileRevalidate === 'number' && params.staleWhileRevalidate >= 0
-                        ? params.staleWhileRevalidate
-                        : (params.staleWhileRevalidate === false ? 0 : smartCache.staleWhileRevalidate);
+                    const tmpStaleTtl = typeof params.staleWhileRevalidate === 'function'
+                        ? params.staleWhileRevalidate(...args) : params.staleWhileRevalidate;
+                    const staleTtl = typeof tmpStaleTtl === 'number' && tmpStaleTtl >= 0
+                        ? tmpStaleTtl
+                        : (tmpStaleTtl === false ? 0 : smartCache.staleWhileRevalidate);
                     const keyPrefix = (typeof (params.keyPrefix) === 'string' && params.keyPrefix.trim() !== '')
                         ? params.keyPrefix : `${target.constructor.name}:${propertyKey}`;
                     const fullCacheKey = `${keyPrefix}:${cacheKey}`;
