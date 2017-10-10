@@ -6,7 +6,7 @@ export interface SmartCacheParams {
     ttl?: number|false|((...args: any[]) => number|false);
     keyPrefix?: string;
     saveEmptyValues?: boolean;
-    staleWhileRevalidate?: number|false;
+    staleWhileRevalidate?: number|false|((...args: any[]) => number|false);
 }
 
 export interface SmartCacheEngine {
@@ -108,9 +108,12 @@ export class SmartCache {
                 // If we reach this part, key is valid
 
                 // Get stale duration
-                const staleTtl = typeof params.staleWhileRevalidate === 'number' && params.staleWhileRevalidate >= 0
-                    ? params.staleWhileRevalidate
-                    : (params.staleWhileRevalidate === false ? 0 : smartCache.staleWhileRevalidate);
+                const tmpStaleTtl = typeof params.staleWhileRevalidate === 'function'
+                    ? params.staleWhileRevalidate(...args) : params.staleWhileRevalidate;
+
+                const staleTtl = typeof tmpStaleTtl === 'number' && tmpStaleTtl >= 0
+                    ? tmpStaleTtl
+                    : (tmpStaleTtl === false ? 0 : smartCache.staleWhileRevalidate);
 
                 // Compute key prefix
                 const keyPrefix = (typeof(params.keyPrefix) === 'string' && params.keyPrefix.trim() !== '')

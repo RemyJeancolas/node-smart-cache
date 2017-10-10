@@ -3,7 +3,7 @@ export interface SmartCacheParams {
     ttl?: number|false|((...args: any[]) => number|false);
     keyPrefix?: string;
     saveEmptyValues?: boolean;
-    staleWhileRevalidate?: number|false;
+    staleWhileRevalidate?: number|false|((...args: any[]) => number|false);
 }
 
 export interface SmartCacheEngine {
