@@ -7,6 +7,7 @@ export interface SmartCacheParams {
     keyPrefix?: string;
     saveEmptyValues?: boolean;
     staleWhileRevalidate?: number|false|((...args: any[]) => number|false);
+    enabled?: ((...args: any[]) => boolean);
 }
 
 export interface SmartCacheEngine {
@@ -94,8 +95,17 @@ export class SmartCache {
             target[generatingProcesses][propertyKey] = <GeneratingProcess> {};
 
             descriptor.value = async function (...args: any[]): Promise<any> {
+                // Check if cache is enabled
+                let enabled = smartCache.enabled;
+                if (typeof params.enabled === 'function') {
+                    const tmpEnabled = params.enabled(...args);
+                    if (typeof tmpEnabled === 'boolean') {
+                        enabled = tmpEnabled;
+                    }
+                }
+
                 // If cache is disabled, just call the original method
-                if (smartCache.enabled !== true) {
+                if (enabled !== true) {
                     return originalMethod.apply(this, args);
                 }
 

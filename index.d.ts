@@ -4,6 +4,7 @@ export interface SmartCacheParams {
     keyPrefix?: string;
     saveEmptyValues?: boolean;
     staleWhileRevalidate?: number|false|((...args: any[]) => number|false);
+    enabled?: ((...args: any[]) => boolean);
 }
 
 export interface SmartCacheEngine {

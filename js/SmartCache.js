@@ -68,7 +68,14 @@ class SmartCache {
             target[generatingProcesses][propertyKey] = {};
             descriptor.value = function (...args) {
                 return __awaiter(this, void 0, void 0, function* () {
-                    if (smartCache.enabled !== true) {
+                    let enabled = smartCache.enabled;
+                    if (typeof params.enabled === 'function') {
+                        const tmpEnabled = params.enabled(...args);
+                        if (typeof tmpEnabled === 'boolean') {
+                            enabled = tmpEnabled;
+                        }
+                    }
+                    if (enabled !== true) {
                         return originalMethod.apply(this, args);
                     }
                     const keyHandler = typeof (params.keyHandler) === 'string' ? target[params.keyHandler] : params.keyHandler;
