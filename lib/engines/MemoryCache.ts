@@ -4,9 +4,10 @@ export class MemoryCache implements SmartCacheEngine {
     private data: any = {};
 
     public constructor(gcInterval: number = 60) {
-        setInterval(() => {
+        const timer = setInterval(() => {
             this.gc();
         }, gcInterval * 1000); // Clean memory data every <gcInterval> seconds
+        timer.unref();
     }
 
     public get(key: string): Promise<any> { // tslint:disable-line:no-reserved-keywords

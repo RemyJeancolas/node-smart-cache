@@ -41,9 +41,10 @@ class FileCache {
             }
         }
         this.filePath = filePath;
-        setInterval(() => {
+        const timer = setInterval(() => {
             this.gc();
         }, gcInterval * 1000);
+        timer.unref();
     }
     get(key) {
         return __awaiter(this, void 0, void 0, function* () {
