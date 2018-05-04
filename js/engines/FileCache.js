@@ -41,10 +41,12 @@ class FileCache {
             }
         }
         this.filePath = filePath;
-        const timer = setInterval(() => {
-            this.gc();
-        }, gcInterval * 1000);
-        timer.unref();
+        if (gcInterval > 0) {
+            const timer = setInterval(() => {
+                this.gc();
+            }, gcInterval * 1000);
+            timer.unref();
+        }
     }
     get(key) {
         return __awaiter(this, void 0, void 0, function* () {

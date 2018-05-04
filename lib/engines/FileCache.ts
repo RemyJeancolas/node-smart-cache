@@ -37,10 +37,12 @@ export class FileCache implements SmartCacheEngine {
 
         this.filePath = filePath;
 
-        const timer = setInterval(() => {
-            this.gc();
-        }, gcInterval * 1000);
-        timer.unref();
+        if (gcInterval > 0) {
+            const timer = setInterval(() => {
+                this.gc();
+            }, gcInterval * 1000);
+            timer.unref();
+        }
     }
 
     // tslint:disable-next-line:no-reserved-keywords

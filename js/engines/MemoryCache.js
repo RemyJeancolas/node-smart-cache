@@ -3,10 +3,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 class MemoryCache {
     constructor(gcInterval = 60) {
         this.data = {};
-        const timer = setInterval(() => {
-            this.gc();
-        }, gcInterval * 1000);
-        timer.unref();
+        if (gcInterval > 0) {
+            const timer = setInterval(() => {
+                this.gc();
+            }, gcInterval * 1000);
+            timer.unref();
+        }
     }
     get(key) {
         if (!this.data.hasOwnProperty(key) || (this.data[key].expire && this.data[key].expire < Date.now())) {
